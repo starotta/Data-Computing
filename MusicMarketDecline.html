@@ -1,0 +1,941 @@
+<html>
+<head>
+
+<link href='https://fonts.googleapis.com/css?family=Didact+Gothic' rel='stylesheet' type='text/css'>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<style>
+
+body {
+	font-family: 'Didact Gothic', sans-serif;
+	font-size: 18pt;
+	font-weight: 900;
+	margin: 20px;
+}
+
+div{margin: 30px;}
+
+svg { background-color: #fff; }
+.axis path { fill: none; stroke: black; }
+.axis line { stroke: black; }
+.axis text { font-size: 12pt; }
+path.outline { fill: none; stroke-width: 8; stroke: white; }
+path.plot { fill: none; stroke-width: 8; }
+
+.legend {
+    padding: 5px;
+	font-family: 20px, 'Didact Gothic', sans-serif;
+    background: yellow;
+	box-shadow: 2px 2px 1px #888;
+	justify-content: center;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1> Music Market Decline </h1>
+
+<h2> Music and Film Industry Revenues </h2>
+<h4> Comparing Music and Film Industry Revenues, and Revenues adjusted on US GDP </h4>
+<h5><small><i>(Data is in the form of Billions of Dollars to Years) </i></small></h5>
+
+<svg id="gdp" height="600" width="800"></svg>
+
+<div>
+
+<script type="text/javascript">
+
+//data citations:
+
+//Music Industry Data:
+//https://musicbusinessresearch.wordpress.com/2015/03/26/the-recorded-music-market-in-the-us-2000-2014/
+
+//Film Industry Data:
+//http://www.the-numbers.com/market/
+
+//US GDP Data:
+//http://www.multpl.com/us-gdp-inflation-adjusted/table
+
+//data is modified to show only data from 2000 to 2014
+//GDP data is factored into musicRevenueAdjustedGDP and 
+//movieRevenueAdjustedGDP as a ratio modifier based off of year 2000
+//values
+
+var musicRevenue = [
+	{ year: 2000, revenue: 14.324},
+	{ year: 2001, revenue: 13.735},
+	{ year: 2002, revenue: 12.605},
+	{ year: 2003, revenue: 11.820},
+	{ year: 2004, revenue: 12.316},
+	{ year: 2005, revenue: 12.248},
+	{ year: 2006, revenue: 11.719},
+	{ year: 2007, revenue: 10.319},
+	{ year: 2008, revenue: 7.529},
+	{ year: 2009, revenue: 7.531},
+	{ year: 2010, revenue: 6.554},
+	{ year: 2011, revenue: 6.935},
+	{ year: 2012, revenue: 6.824},
+	{ year: 2013, revenue: 6.807},
+	{ year: 2014, revenue: 6.780}
+];
+
+var movieRevenue = [
+	{ year: 2000, revenue: 7.700},
+	{ year: 2001, revenue: 8.290},
+	{ year: 2002, revenue: 9.150},
+	{ year: 2003, revenue: 9.190},
+	{ year: 2004, revenue: 9.280},
+	{ year: 2005, revenue: 8.810},
+	{ year: 2006, revenue: 9.180},
+	{ year: 2007, revenue: 9.760},
+	{ year: 2008, revenue: 9.780},
+	{ year: 2009, revenue: 10.640},
+	{ year: 2010, revenue: 10.510},
+	{ year: 2011, revenue: 10.190},
+	{ year: 2012, revenue: 11.020},
+	{ year: 2013, revenue: 10.930},
+	{ year: 2014, revenue: 10.370}
+];
+
+var musicRevenueAdjustedGDP = [
+	{ year: 2000, revenue: 14.324},
+	{ year: 2001, revenue: 12.663},
+	{ year: 2002, revenue: 11.107},
+	{ year: 2003, revenue: 10.154},
+	{ year: 2004, revenue: 10.077},
+	{ year: 2005, revenue: 9.809},
+	{ year: 2006, revenue: 9.405},
+	{ year: 2007, revenue: 7.944},
+	{ year: 2008, revenue: 5.421},
+	{ year: 2009, revenue: 5.214},
+	{ year: 2010, revenue: 4.622},
+	{ year: 2011, revenue: 4.775},
+	{ year: 2012, revenue: 4.502},
+	{ year: 2013, revenue: 4.274},
+	{ year: 2014, revenue: 3.992}
+];
+
+var movieRevenueAdjustedGDP = [
+	{ year: 2000, revenue: 7.700},
+	{ year: 2001, revenue: 7.643},
+	{ year: 2002, revenue: 8.062},
+	{ year: 2003, revenue: 7.895},
+	{ year: 2004, revenue: 7.593},
+	{ year: 2005, revenue: 7.055},
+	{ year: 2006, revenue: 7.367},
+	{ year: 2007, revenue: 7.514},
+	{ year: 2008, revenue: 7.042},
+	{ year: 2009, revenue: 7.366},
+	{ year: 2010, revenue: 7.412},
+	{ year: 2011, revenue: 7.016},
+	{ year: 2012, revenue: 7.270},
+	{ year: 2013, revenue: 6.863},
+	{ year: 2014, revenue: 6.106}
+];
+
+var svg = d3.select("#gdp");
+var height = svg.attr("height");
+var width = svg.attr("width");
+
+var padding = 70;
+var xScale = d3.scale.linear().domain([2000, 2014]).range([padding, width-20]);
+var yScale = d3.scale.linear().domain([4, 15]).range([height - padding, 10]);
+
+var xAxis = d3.svg.axis().scale(xScale).orient("bottom")
+.tickFormat(d3.format("0000")).tickSize(0).tickPadding([10]);
+var yAxis = d3.svg.axis().scale(yScale).orient("left")
+.tickFormat(d3.format("0000")).tickSize(0).tickPadding([10]);
+
+var musicLine = d3.svg.line()
+.x(function (d) { return xScale(d.year); })
+.y(function (d) { return yScale(d.revenue); });
+
+var movieLine = d3.svg.line()
+.x(function (d) {return xScale(d.year); })
+.y(function (d) {return yScale(d.revenue); });
+
+var musicGDPLine = d3.svg.line()
+.x(function (d) {return xScale(d.year); })
+.y(function (d) {return yScale(d.revenue); });
+
+var movieGDPLine = d3.svg.line()
+.x(function (d) {return xScale(d.year); })
+.y(function (d) {return yScale(d.revenue); });
+
+
+
+svg.append("path").attr("d", movieGDPLine(movieRevenueAdjustedGDP))
+.attr("class", "outline").attr("stroke", "white")
+;
+svg.append("path").attr("d", movieGDPLine(movieRevenueAdjustedGDP))
+.attr("class", "plot").attr("stroke", "#C0392B")
+.style("opacity", 0.35)
+.attr("id", "movieGDP");
+
+svg.append("text")
+.style("font-size", "18px")
+.style("fill","#C0392B")
+.style("opacity", 0.6)
+.attr("transform", "translate(0, 30)")
+.append("textPath")
+.attr("xlink:href", "#movieGDP")
+.attr("startOffset", "10%")
+.text("Film Revenues (adjusted on GDP)")
+;
+
+svg.append("path").attr("d", movieLine(movieRevenue))
+.attr("class", "outline").attr("stroke", "white")
+.attr("id", "movie");
+svg.append("path").attr("d", movieLine(movieRevenue))
+.attr("class", "plot").attr("stroke", "#C0392B")
+.attr("opacity", 0.9)
+;
+
+svg.append("text")
+.style("font-size", "18px")
+.style("fill","#C0392B")
+.style("opacity", 0.9)
+.attr("transform", "translate(0, 30)")
+.append("textPath")
+.attr("xlink:href", "#movie")
+.attr("startOffset", "18%")
+.text("Film Revenues")
+;
+
+svg.append("path").attr("d", musicGDPLine(musicRevenueAdjustedGDP))
+.attr("class", "outline").attr("stroke", "white");
+svg.append("path").attr("d", musicGDPLine(musicRevenueAdjustedGDP))
+.attr("class", "plot").attr("stroke", "#2980B9")
+.attr("opacity", 0.35)
+.attr("id", "musicGDP");
+
+svg.append("text")
+.style("font-size", "18px")
+.style("fill","#2980B9")
+.style("opacity", 0.6)
+.attr("transform", "translate(0, -20)")
+.append("textPath")
+.attr("xlink:href", "#musicGDP")
+.attr("startOffset", "18%")
+.text("Music Reve nues (adjusted on GDP)")
+;
+
+svg.append("path").attr("d", musicLine(musicRevenue))
+.attr("class", "outline").attr("stroke", "white");
+svg.append("path").attr("d", musicLine(musicRevenue))
+.attr("class", "plot").attr("stroke", "#2980B9")
+.attr("opacity", 0.9)
+.attr("id", "music");
+
+svg.append("text")
+.style("font-size", "18px")
+.style("fill","#2980B9")
+.style("opacity", 0.9)
+.attr("transform", "translate(0, -20)")
+.append("textPath")
+.attr("xlink:href", "#music")
+.attr("startOffset", "8%")
+.text("Music Revenues")
+;
+
+//Create the element for xaxis label
+svg.append("g")
+		.attr("class", "xaxis axis")  // two classes, one for css formatting, one for selection below
+		.attr("transform", "translate(0," + (height - padding) + ")")
+		.call(xAxis);
+
+	//Create the element for yaxis label
+svg.append("g")
+        	.attr("class", "axis")
+            .attr("transform", "translate("+padding+",0)")
+            .call(yAxis);
+
+//Add the actual text for the yaxis
+svg.append("text")
+           .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+           .attr("transform", "translate("+ (padding/2) +","+(height/2)+")rotate(-90)")  // text is drawn off the screen top left, move down and out and rotate
+           .text("Revenue (Billions of Dollars)");
+
+//Add the actual text for the xaxis
+ svg.append("text")
+     .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+     .attr("transform", "translate("+ (width/2) +","+(height-(padding/3))+")")  // centre below axis
+     .text("Year");
+
+
+var gdpAreaValues1 = [];
+var gdpAreaValues2 = [];
+var i = 0;
+
+for(;i<musicRevenueAdjustedGDP.length;i++){
+	//if(musicRevenueAdjustedGDP[i].revenue > movieRevenueAdjustedGDP[i].revenue){
+		gdpAreaValues1.push({year:musicRevenueAdjustedGDP[i].year,revenue:musicRevenueAdjustedGDP[i].revenue,revenue2:movieRevenueAdjustedGDP[i].revenue});
+		gdpAreaValues2.push({year:musicRevenue[i].year,revenue:musicRevenue[i].revenue,revenue2:movieRevenue[i].revenue});
+	//}
+}
+
+
+var gdpArea = d3.svg.area()
+.x(function (d) { return xScale(d.year); })
+.y0(function (d) { return yScale(d.revenue2); })
+.y1(function (d) { return yScale(d.revenue); });
+
+svg.append("path").attr("d", gdpArea(gdpAreaValues1))
+.style("fill", "mediumorchid")
+.style("opacity", 0.05)
+.style("stroke", "#C0392B");
+
+svg.append("path").attr("d", gdpArea(gdpAreaValues2))
+.style("fill", "mediumorchid")
+.style("opacity", 0.05)
+.style("stroke", "#C0392B");
+
+</script>
+</div>
+
+<p style="font-size:14pt; white-space: pre;">
+This graph displays the comparative change in revenues for both the music and film industries from 2000 to 2014. It is intended to show
+how the music industry has declined since 2000, compared to the film industry, which shares many similarities with it. The lighter lines
+show the revenues once adjusted for the change in US GDP. This shows the decline of the music industry as more severe compared to the 
+more constant film industry, which declined much less in the same span of time. The decline of the music industry is greatest between 2006
+to 2008, which may suggest something had changed significantly in the market just before that time.
+</p>
+
+
+
+<!-- This is the Graph for the music media distribution -->
+<h2> Music Media Distribution </h2>
+<h4> Comparing CD's, Cassette's, Digital Tracks, and Streaming </h4>
+<h5><small><i>(Data is in the form of percentage of media sold out of the total per year) </i></small></h5>
+
+
+<svg id="ara" height="600" width="800"></svg>
+<div>
+
+<script type="text/javascript">
+
+//CD data is from various Nielsen reports, linked in the write up
+var cdData = [
+	{ year: 1990, sales: 45.8},
+	{ year: 1995, sales: 76.1},
+	{ year: 1996, sales: 79.3},
+	{ year: 1997, sales: 81.0},
+	{ year: 1998, sales: 87.9},
+	{ year: 1999, sales: 87.9},
+	{ year: 2000, sales: 92.3},
+	{ year: 2001, sales: 93.9},
+	{ year: 2002, sales: 95.5},
+	{ year: 2003, sales: 94.8},
+	{ year: 2004, sales: 92.7},
+	{ year: 2005, sales: 85.6},
+	{ year: 2006, sales: 79.7},
+	{ year: 2007, sales: 70.0},
+	{ year: 2008, sales: 62.4},
+	{ year: 2009, sales: 55.6},
+	{ year: 2010, sales: 49.1},
+	{ year: 2011, sales: 45.2},
+	{ year: 2012, sales: 36.9},
+	{ year: 2013, sales: 31.0},
+	{ year: 2014, sales: 32.0},
+	{ year: 2015, sales: 31.1}
+];
+
+//CassetteData is from various sources, most notably Wikipedia that reported
+//cassette data beginning in 1980 until 2000
+var cassetteData = [
+	{ year: 1990, sales: 46},
+	{ year: 1995, sales: 18.7},
+	{ year: 1996, sales: 15.2},
+	{ year: 1997, sales: 12.4},
+	{ year: 1998, sales: 7.3},
+	{ year: 1999, sales: 7.3},
+	{ year: 2000, sales: 4.4},
+	{ year: 2001, sales: 2.6},
+	{ year: 2002, sales: 1.7},
+	{ year: 2003, sales: 0.9},
+	{ year: 2004, sales: 0.2},
+	{ year: 2005, sales: 0.1},
+	{ year: 2006, sales: 0.01},
+	{ year: 2007, sales: 0},
+	{ year: 2008, sales: 0},
+	{ year: 2009, sales: 0},
+	{ year: 2010, sales: 0},
+	{ year: 2011, sales: 0},
+	{ year: 2012, sales: 0},
+	{ year: 2013, sales: 0},
+	{ year: 2014, sales: 0},
+	{ year: 2015, sales: 0}
+];
+
+//Digital data came almost exclusively from the Nielsen reports and RIAA pdfs
+var digitalData = [
+	{ year: 1990, sales: 0.0},
+	{ year: 1995, sales: 0.0},
+	{ year: 1996, sales: 0.0},
+	{ year: 1997, sales: 0.0},
+	{ year: 1998, sales: 0.0},
+	{ year: 1999, sales: 0.0},
+	{ year: 2000, sales: 0.0},
+	{ year: 2001, sales: 0.0},
+	{ year: 2002, sales: 0.0},
+	{ year: 2003, sales: 0.0},
+	{ year: 2004, sales: 1.5},
+	{ year: 2005, sales: 4.1},
+	{ year: 2006, sales: 14.0},
+	{ year: 2007, sales: 23.5},
+	{ year: 2008, sales: 30.6},
+	{ year: 2009, sales: 35.8},
+	{ year: 2010, sales: 41.2},
+	{ year: 2011, sales: 46.1},
+	{ year: 2012, sales: 55.2},
+	{ year: 2013, sales: 64.0},
+	{ year: 2014, sales: 37.0},
+	{ year: 2015, sales: 36.8}
+];
+
+//Streaming data came from actual spotify data reports and  Wikipedia had some helpful
+// data links
+var streamingData = [
+	{ year: 1990, sales: 0.0},
+	{ year: 1995, sales: 0.0},
+	{ year: 1996, sales: 0.0},
+	{ year: 1997, sales: 0.0},
+	{ year: 1998, sales: 0.0},
+	{ year: 1999, sales: 0.0},
+	{ year: 2000, sales: 0.0},
+	{ year: 2001, sales: 0.0},
+	{ year: 2002, sales: 0.0},
+	{ year: 2003, sales: 0.0},
+	{ year: 2004, sales: 0.0},
+	{ year: 2005, sales: 0.0},
+	{ year: 2006, sales: 0.0},
+	{ year: 2007, sales: 3.0},
+	{ year: 2008, sales: 4.0},
+	{ year: 2009, sales: 5.0},
+	{ year: 2010, sales: 7.0},
+	{ year: 2011, sales: 9.0},
+	{ year: 2012, sales: 15.0},
+	{ year: 2013, sales: 21.0},
+	{ year: 2014, sales: 27.0},
+	{ year: 2015, sales: 30.1}
+];
+
+
+var svg = d3.select("#ara");
+var height = svg.attr("height");
+var width = svg.attr("width");
+
+var padding = 70;
+//Setting the x scale
+var xScale = d3.scale.linear().domain([1990, 2015]).range([padding, width]);
+//Setting the y scale
+var yScale = d3.scale.linear().domain([0, 105]).range([height - padding, 0]);
+
+//Setting up the x and y axis
+var xAxis = d3.svg.axis().scale(xScale).orient("bottom")
+.tickFormat(d3.format("0000")).tickSize(0).tickPadding([10]);
+var yAxis = d3.svg.axis().scale(yScale).orient("left")
+.tickFormat(d3.format("0000")).tickSize(0).tickPadding([10]);
+
+//Draw the two axis in the svg element
+svg.append("g").attr("transform", "translate(0," + (height - padding) + ")").attr("class", "axis")
+.call(xAxis);
+svg.append("g").attr("transform", "translate(" + padding + ",0)").attr("class", "axis")
+.call(yAxis);
+
+//Create the element for xaxis label
+svg.append("g")
+		.attr("class", "xaxis axis")  // two classes, one for css formatting, one for selection below
+		.attr("transform", "translate(0," + (height - padding) + ")")
+		.call(xAxis);
+
+	//Create the element for yaxis label
+svg.append("g")
+        	.attr("class", "axis")
+            .attr("transform", "translate("+padding+",0)")
+            .call(yAxis);
+
+//Add the actual text for the yaxis
+svg.append("text")
+           .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+           .attr("transform", "translate("+ (padding/2) +","+(height/2)+")rotate(-90)")  // text is drawn off the screen top left, move down and out and rotate
+           .text("Percentage");
+
+//Add the actual text for the xaxis
+ svg.append("text")
+     .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+     .attr("transform", "translate("+ (width/2) +","+(height-(padding/3))+")")  // centre below axis
+     .text("Year");
+
+
+//Use cd data to form a line
+var cdLine = d3.svg.line()
+.x(function (d) {return xScale(d.year); })
+.y(function (d) {return yScale(d.sales); });
+
+//Drawing the data onto the graph
+svg.append("path").attr("d", cdLine(cdData))
+.attr("class", "outline").attr("stroke", "white");
+svg.append("path").attr("d", cdLine(cdData))
+.attr("class", "plot").attr("stroke", "#C0392B");
+
+//Adding in the shading below the cd line like shown in lecture
+var cdArea = d3.svg.area()
+.x(function (d) { return xScale(d.year); })
+.y0(function (d) { return yScale(0); })
+.y1(function (d) { return yScale(d.sales); });
+
+svg.append("path").attr("d", cdArea(cdData))
+.style("fill", "#C0392B")
+.style("opacity", 0.75)
+.style("stroke", "#C0392B")
+.attr("id", "cdlegend");
+
+//Labeling the cd line with "CD"
+svg.append("text")
+.style("font-size", "30px")
+.style("fill","#fff")
+.attr("transform", "translate(20, 30)")
+.append("textPath")
+.attr("xlink:href", "#cdlegend")
+.attr("startOffset", "19%")
+.text("CD")
+
+;
+
+
+///
+
+var cassetteLine = d3.svg.line()
+.x(function (d) {return xScale(d.year); })
+.y(function (d) {return yScale(d.sales); });
+
+svg.append("path").attr("d", cassetteLine(cassetteData))
+.attr("class", "outline").attr("stroke", "white");
+svg.append("path").attr("d", cassetteLine(cassetteData))
+.attr("class", "plot").attr("stroke", "#F39C12");
+
+var cassetteArea = d3.svg.area()
+.x(function (d) { return xScale(d.year); })
+.y0(function (d) { return yScale(0); })
+.y1(function (d) { return yScale(d.sales); });
+
+svg.append("path").attr("d", cassetteArea(cassetteData))
+.style("fill", "#F39C12")
+.style("opacity", 0.75)
+.style("stroke", "#F39C12")
+.attr("id", "casettelegend");
+
+svg.append("text")
+.style("font-size", "30px")
+.style("fill","#fff")
+.attr("transform", "translate(-10 30)")
+.append("textPath")
+.attr("xlink:href", "#casettelegend")
+.attr("startOffset", "10%")
+.text("Cassette")
+;
+
+//
+
+var digitalLine = d3.svg.line()
+.x(function (d) { return xScale(d.year); })
+.y(function (d) { return yScale(d.sales); });
+
+svg.append("path").attr("d", digitalLine(digitalData))
+.attr("class", "outline").attr("stroke", "white");
+svg.append("path").attr("d", digitalLine(digitalData))
+.attr("class", "plot").attr("stroke", "#2980B9");
+
+var digitalArea = d3.svg.area()
+.x(function (d) { return xScale(d.year); })
+.y0(function (d) { return yScale(0); })
+.y1(function (d) { return yScale(d.sales); });
+
+svg.append("path").attr("d", digitalArea(digitalData))
+.style("fill", "#2980B9")
+.style("opacity", 0.75)
+.style("stroke", "#2980B9")
+.attr("id", "digitallegend");
+
+svg.append("text")
+.style("font-size", "30px")
+.style("fill","#fff")
+.attr("transform", "translate(30, 30)")
+.append("textPath")
+.attr("xlink:href", "#digitallegend")
+.attr("startOffset", "30%")
+.text("Digital")
+
+///
+
+
+var streamingLine = d3.svg.line()
+.x(function (d) {return xScale(d.year); })
+.y(function (d) {return yScale(d.sales); });
+
+svg.append("path").attr("d", streamingLine(streamingData))
+.attr("class", "outline").attr("stroke", "white");
+svg.append("path").attr("d", streamingLine(streamingData))
+.attr("class", "plot").attr("stroke", "#16A085");
+
+var streamingArea = d3.svg.area()
+.x(function (d) { return xScale(d.year); })
+.y0(function (d) { return yScale(0); })
+.y1(function (d) { return yScale(d.sales); });
+
+svg.append("path").attr("d", streamingArea(streamingData))
+.style("fill", "#16A085")
+.style("opacity", 0.75)
+.style("stroke", "#16A085")
+.attr("id", "strlegend");
+
+svg.append("text")
+.style("font-size", "26px")
+.style("fill","#fff")
+.attr("transform", "translate(13, 30)")
+.append("textPath")
+.attr("xlink:href", "#strlegend")
+.attr("startOffset", "37%")
+.text("Streaming")
+;
+
+
+</script>
+</div>
+
+<p style="font-size:14pt; white-space: pre;">
+This graph shows how the different mediums for music have changed over time and the different effects
+that each one has had on the other. At the beginning we can see how around the early 90's, the cassetter was already rapidly declining
+and making way for the fast growing CD market. This type of music format dominated for most of the 90's and well into the 2000's. It wasn't
+until technology had advanced enough that digital music downloads started to appear more frequently. This new, readily available format
+quickly began to pick up steam and drown out the CD market. This spike in digital downloads was short lived and we can see how in 2012 to 2013
+Streaming began to take the spotlight from Digital Tracks. </p>
+
+<h2> Milestones in Music Industry</h2>
+<h4> Top Selling Albums 1991-2015</h4>
+<h5><small><i>(Only albums that sold over 2 million are shown) </i></small></h5>
+
+
+<svg id="soyeon" height="800" width="900"></svg>
+
+
+<div>
+
+<script type="text/javascript">
+	var svg = d3.select("#soyeon");
+	var circle = d3.select("circle");
+	var height = svg.attr("height");
+	var width = svg.attr("width");
+	var padding = 50;
+
+	var yScale = d3.scale.linear().domain([2017, 1989]).range([height - padding, 0]);
+	var xScale = d3.scale.linear().domain([1, 6]).range([padding, width]);
+
+	var yAxis = d3.svg.axis().scale(yScale).orient("left").tickFormat(d3.format("0000")).tickSize(0);
+	var xAxis = d3.svg.axis().scale(xScale).orient("top");
+
+	svg.append("g").attr("transform", "translate( " + padding + ",0)").attr("class", "axis")
+	.call(yAxis);
+
+
+//done with setting up graph
+// loop for representing album sales with circles
+
+//data citation:
+//https://en.wikipedia.org/wiki/Best-selling_albums_in_the_United_States_since_Nielsen_SoundScan_tracking_began#cite_note-40
+
+//data is modified to show only the albums that sold over 2 million
+//genre is individually searched online
+
+
+
+var circleRatio=[
+{	year:	1991	,cap:	1	,	ratio:	40	,	genre:	2	}	,
+{	year:	1991	,cap:	2	,	ratio:	34	,	genre:	1	}	,
+{	year:	1991	,cap:	3	,	ratio:	33.4	,	genre:	2	}	,
+{	year:	1991	,cap:	4	,	ratio:	32.6	,	genre:	1	}	,
+{	year:	1991	,cap:	5	,	ratio:	32	,	genre:	0	}	,
+{	year:	1991	,cap:	6	,	ratio:	31.7	,	genre:	1	}	,
+{	year:	1991	,cap:	7	,	ratio:	31.5	,	genre:	1	}	,
+{	year:	1991	,cap:	8	,	ratio:	28.1	,	genre:	0	}	,
+{	year:	1991	,cap:	9	,	ratio:	27.8	,	genre:	0	}	,
+{	year:	1991	,cap:	10	,	ratio:	24	,	genre:	4	}	,
+{	year:	1992	,cap:	1	,	ratio:	48	,	genre:	2	}	,
+{	year:	1993	,cap:	10	,	ratio:	54	,	genre:	6	}	,
+{	year:	1993	,cap:	1	,	ratio:	43	,	genre:	1	}	,
+{	year:	1993	,cap:	2	,	ratio:	38	,	genre:	0	}	,
+{	year:	1993	,cap:	3	,	ratio:	38	,	genre:	3	}	,
+{	year:	1993	,cap:	4	,	ratio:	33	,	genre:	1	}	,
+{	year:	1993	,cap:	5	,	ratio:	29	,	genre:	4	}	,
+{	year:	1993	,cap:	6	,	ratio:	29	,	genre:	0	}	,
+{	year:	1993	,cap:	7	,	ratio:	28	,	genre:	2	}	,
+{	year:	1993	,cap:	8	,	ratio:	27	,	genre:	0	}	,
+{	year:	1993	,cap:	9	,	ratio:	26	,	genre:	0	}	,
+{	year:	1994	,cap:	9	,	ratio:	49	,	genre:	6	}	,
+{	year:	1994	,cap:	10	,	ratio:	49	,	genre:	1	}	,
+{	year:	1994	,cap:	1	,	ratio:	43	,	genre:	5	}	,
+{	year:	1994	,cap:	2	,	ratio:	38	,	genre:	0	}	,
+{	year:	1994	,cap:	3	,	ratio:	34	,	genre:	0	}	,
+{	year:	1994	,cap:	4	,	ratio:	32	,	genre:	2	}	,
+{	year:	1994	,cap:	5	,	ratio:	31	,	genre:	0	}	,
+{	year:	1994	,cap:	6	,	ratio:	30	,	genre:	3	}	,
+{	year:	1994	,cap:	7	,	ratio:	29	,	genre:	0	}	,
+{	year:	1994	,cap:	8	,	ratio:	27	,	genre:	1	}	,
+{	year:	1995	,cap:	8	,	ratio:	70	,	genre:	0	}	,
+{	year:	1995	,cap:	9	,	ratio:	48	,	genre:	1	}	,
+{	year:	1995	,cap:	10	,	ratio:	42	,	genre:	0	}	,
+{	year:	1995	,cap:	1	,	ratio:	39	,	genre:	1	}	,
+{	year:	1995	,cap:	2	,	ratio:	38	,	genre:	2	}	,
+{	year:	1995	,cap:	3	,	ratio:	35	,	genre:	0	}	,
+{	year:	1995	,cap:	4	,	ratio:	32	,	genre:	5	}	,
+{	year:	1995	,cap:	5	,	ratio:	29	,	genre:	1	}	,
+{	year:	1995	,cap:	6	,	ratio:	28	,	genre:	0	}	,
+{	year:	1995	,cap:	7	,	ratio:	28	,	genre:	2	}	,
+{	year:	1996	,cap:	8	,	ratio:	74	,	genre:	0	}	,
+{	year:	1996	,cap:	2	,	ratio:	60	,	genre:	1	}	,
+{	year:	1996	,cap:	3	,	ratio:	45	,	genre:	4	}	,
+{	year:	1996	,cap:	4	,	ratio:	44	,	genre:	0	}	,
+{	year:	1996	,cap:	5	,	ratio:	30	,	genre:	1	}	,
+{	year:	1996	,cap:	6	,	ratio:	30	,	genre:	4	}	,
+{	year:	1996	,cap:	7	,	ratio:	30	,	genre:	0	}	,
+{	year:	1996	,cap:	1	,	ratio:	29	,	genre:	5	}	,
+{	year:	1996	,cap:	9	,	ratio:	28	,	genre:	2	}	,
+{	year:	1996	,cap:	10	,	ratio:	26	,	genre:	0	}	,
+{	year:	1997	,cap:	4	,	ratio:	53	,	genre:	1	}	,
+{	year:	1997	,cap:	2	,	ratio:	43	,	genre:	1	}	,
+{	year:	1997	,cap:	3	,	ratio:	34	,	genre:	4	}	,
+{	year:	1997	,cap:	1	,	ratio:	33	,	genre:	2	}	,
+{	year:	1997	,cap:	5	,	ratio:	32	,	genre:	0	}	,
+{	year:	1997	,cap:	6	,	ratio:	31	,	genre:	4	}	,
+{	year:	1997	,cap:	7	,	ratio:	31	,	genre:	0	}	,
+{	year:	1997	,cap:	8	,	ratio:	30	,	genre:	1	}	,
+{	year:	1997	,cap:	9	,	ratio:	29	,	genre:	6	}	,
+{	year:	1997	,cap:	10	,	ratio:	29	,	genre:	2	}	,
+{	year:	1998	,cap:	10	,	ratio:	93	,	genre:	6	}	,
+{	year:	1998	,cap:	2	,	ratio:	58	,	genre:	1	}	,
+{	year:	1998	,cap:	3	,	ratio:	57	,	genre:	1	}	,
+{	year:	1998	,cap:	4	,	ratio:	48.7	,	genre:	2	}	,
+{	year:	1998	,cap:	5	,	ratio:	43.8	,	genre:	1	}	,
+{	year:	1998	,cap:	6	,	ratio:	41	,	genre:	6	}	,
+{	year:	1998	,cap:	7	,	ratio:	39	,	genre:	2	}	,
+{	year:	1998	,cap:	8	,	ratio:	37	,	genre:	4	}	,
+{	year:	1998	,cap:	9	,	ratio:	32	,	genre:	1	}	,
+{	year:	1998	,cap:	1	,	ratio:	32	,	genre:	6	}	,
+{	year:	1999	,cap:	7	,	ratio:	95	,	genre:	1	}	,
+{	year:	1999	,cap:	2	,	ratio:	83	,	genre:	1	}	,
+{	year:	1999	,cap:	3	,	ratio:	60	,	genre:	1	}	,
+{	year:	1999	,cap:	4	,	ratio:	56	,	genre:	2	}	,
+{	year:	1999	,cap:	5	,	ratio:	49	,	genre:	3	}	,
+{	year:	1999	,cap:	6	,	ratio:	47	,	genre:	0	}	,
+{	year:	1999	,cap:	1	,	ratio:	42	,	genre:	0	}	,
+{	year:	1999	,cap:	8	,	ratio:	36	,	genre:	5	}	,
+{	year:	1999	,cap:	9	,	ratio:	36	,	genre:	1	}	,
+{	year:	1999	,cap:	10	,	ratio:	34	,	genre:	2	}	,
+{	year:	2000	,cap:	9	,	ratio:	99	,	genre:	1	}	,
+{	year:	2000	,cap:	2	,	ratio:	79	,	genre:	4	}	,
+{	year:	2000	,cap:	6	,	ratio:	78	,	genre:	1	}	,
+{	year:	2000	,cap:	4	,	ratio:	66	,	genre:	0	}	,
+{	year:	2000	,cap:	5	,	ratio:	58	,	genre:	0	}	,
+{	year:	2000	,cap:	1	,	ratio:	50	,	genre:	1	}	,
+{	year:	2000	,cap:	7	,	ratio:	50	,	genre:	4	}	,
+{	year:	2000	,cap:	8	,	ratio:	42	,	genre:	1	}	,
+{	year:	2000	,cap:	3	,	ratio:	40	,	genre:	4	}	,
+{	year:	2000	,cap:	10	,	ratio:	38	,	genre:	1	}	,
+{	year:	2001	,cap:	2	,	ratio:	48	,	genre:	0	}	,
+{	year:	2001	,cap:	1	,	ratio:	45	,	genre:	4	}	,
+{	year:	2001	,cap:	3	,	ratio:	44	,	genre:	1	}	,
+{	year:	2001	,cap:	4	,	ratio:	44	,	genre:	3	}	,
+{	year:	2001	,cap:	5	,	ratio:	42	,	genre:	0	}	,
+{	year:	2001	,cap:	6	,	ratio:	41	,	genre:	5	}	,
+{	year:	2001	,cap:	7	,	ratio:	37	,	genre:	1	}	,
+{	year:	2001	,cap:	8	,	ratio:	35	,	genre:	0	}	,
+{	year:	2001	,cap:	9	,	ratio:	34	,	genre:	6	}	,
+{	year:	2001	,cap:	10	,	ratio:	31	,	genre:	3	}	,
+{	year:	2002	,cap:	8	,	ratio:	76	,	genre:	4	}	,
+{	year:	2002	,cap:	2	,	ratio:	49	,	genre:	4	}	,
+{	year:	2002	,cap:	3	,	ratio:	41	,	genre:	1	}	,
+{	year:	2002	,cap:	4	,	ratio:	37	,	genre:	2	}	,
+{	year:	2002	,cap:	5	,	ratio:	35	,	genre:	0	}	,
+{	year:	2002	,cap:	6	,	ratio:	31	,	genre:	1	}	,
+{	year:	2002	,cap:	7	,	ratio:	31	,	genre:	2	}	,
+{	year:	2002	,cap:	1	,	ratio:	30	,	genre:	2	}	,
+{	year:	2002	,cap:	9	,	ratio:	29	,	genre:	2	}	,
+{	year:	2002	,cap:	10	,	ratio:	27	,	genre:	6	}	,
+{	year:	2003	,cap:	3	,	ratio:	65	,	genre:	4	}	,
+{	year:	2003	,cap:	2	,	ratio:	51	,	genre:	3	}	,
+{	year:	2003	,cap:	1	,	ratio:	34	,	genre:	0	}	,
+{	year:	2003	,cap:	4	,	ratio:	33	,	genre:	0	}	,
+{	year:	2003	,cap:	5	,	ratio:	30	,	genre:	4	}	,
+{	year:	2003	,cap:	6	,	ratio:	29	,	genre:	5	}	,
+{	year:	2003	,cap:	7	,	ratio:	25	,	genre:	1	}	,
+{	year:	2003	,cap:	8	,	ratio:	24	,	genre:	1	}	,
+{	year:	2003	,cap:	9	,	ratio:	23	,	genre:	2	}	,
+{	year:	2003	,cap:	10	,	ratio:	22	,	genre:	0	}	,
+{	year:	2004	,cap:	6	,	ratio:	80	,	genre:	4	}	,
+{	year:	2004	,cap:	2	,	ratio:	38	,	genre:	3	}	,
+{	year:	2004	,cap:	3	,	ratio:	35	,	genre:	4	}	,
+{	year:	2004	,cap:	4	,	ratio:	31	,	genre:	2	}	,
+{	year:	2004	,cap:	5	,	ratio:	30	,	genre:	5	}	,
+{	year:	2004	,cap:	1	,	ratio:	29	,	genre:	2	}	,
+{	year:	2004	,cap:	7	,	ratio:	27	,	genre:	2	}	,
+{	year:	2004	,cap:	8	,	ratio:	27	,	genre:	1	}	,
+{	year:	2004	,cap:	9	,	ratio:	26	,	genre:	0	}	,
+{	year:	2004	,cap:	10	,	ratio:	25	,	genre:	1	}	,
+{	year:	2005	,cap:	2	,	ratio:	50	,	genre:	1	}	,
+{	year:	2005	,cap:	1	,	ratio:	48	,	genre:	4	}	,
+{	year:	2005	,cap:	3	,	ratio:	35	,	genre:	1	}	,
+{	year:	2005	,cap:	4	,	ratio:	33	,	genre:	0	}	,
+{	year:	2005	,cap:	5	,	ratio:	30	,	genre:	1	}	,
+{	year:	2005	,cap:	6	,	ratio:	26	,	genre:	0	}	,
+{	year:	2005	,cap:	7	,	ratio:	25	,	genre:	2	}	,
+{	year:	2005	,cap:	8	,	ratio:	25	,	genre:	1	}	,
+{	year:	2005	,cap:	9	,	ratio:	24	,	genre:	4	}	,
+{	year:	2005	,cap:	10	,	ratio:	22.7	,	genre:	4	}	,
+{	year:	2006	,cap:	6	,	ratio:	37	,	genre:	6	}	,
+{	year:	2006	,cap:	2	,	ratio:	34	,	genre:	2	}	,
+{	year:	2006	,cap:	3	,	ratio:	30	,	genre:	2	}	,
+{	year:	2006	,cap:	4	,	ratio:	27	,	genre:	0	}	,
+{	year:	2006	,cap:	5	,	ratio:	23	,	genre:	1	}	,
+{	year:	2006	,cap:	1	,	ratio:	21	,	genre:	1	}	,
+{	year:	2006	,cap:	7	,	ratio:	20	,	genre:	1	}	,
+{	year:	2007	,cap:	6	,	ratio:	36	,	genre:	6	}	,
+{	year:	2007	,cap:	2	,	ratio:	29	,	genre:	6	}	,
+{	year:	2007	,cap:	3	,	ratio:	26	,	genre:	0	}	,
+{	year:	2007	,cap:	4	,	ratio:	25	,	genre:	5	}	,
+{	year:	2007	,cap:	5	,	ratio:	25	,	genre:	0	}	,
+{	year:	2007	,cap:	1	,	ratio:	25	,	genre:	6	}	,
+{	year:	2007	,cap:	7	,	ratio:	20	,	genre:	0	}	,
+{	year:	2007	,cap:	8	,	ratio:	20	,	genre:	1	}	,
+{	year:	2008	,cap:	1	,	ratio:	28	,	genre:	4	}	,
+{	year:	2008	,cap:	2	,	ratio:	21	,	genre:	1	}	,
+{	year:	2008	,cap:	3	,	ratio:	21	,	genre:	1	}	,
+{	year:	2008	,cap:	4	,	ratio:	20	,	genre:	2	}	,
+{	year:	2009	,cap:	1	,	ratio:	32	,	genre:	1	}	,
+{	year:	2009	,cap:	2	,	ratio:	31	,	genre:	3	}	,
+{	year:	2009	,cap:	3	,	ratio:	23	,	genre:	1	}	,
+{	year:	2009	,cap:	4	,	ratio:	22	,	genre:	1	}	,
+{	year:	2009	,cap:	5	,	ratio:	22	,	genre:	3	}	,
+{	year:	2010	,cap:	4	,	ratio:	34	,	genre:	4	}	,
+{	year:	2010	,cap:	2	,	ratio:	30	,	genre:	1	}	,
+{	year:	2010	,cap:	3	,	ratio:	29	,	genre:	1	}	,
+{	year:	2010	,cap:	1	,	ratio:	23	,	genre:	1	}	,
+{	year:	2011	,cap:	1	,	ratio:	58	,	genre:	1	}	,
+{	year:	2011	,cap:	2	,	ratio:	24	,	genre:	1	}	,
+{	year:	2011	,cap:	3	,	ratio:	21	,	genre:	1	}	,
+{	year:	2012	,cap:	1	,	ratio:	44	,	genre:	1	}	,
+{	year:	2012	,cap:	2	,	ratio:	31	,	genre:	1	}	,
+{	year:	2013	,cap:	1	,	ratio:	24	,	genre:	1	}	,
+{	year:	2014	,cap:	1	,	ratio:	36	,	genre:	1	}	,
+{	year:	2014	,cap:	2	,	ratio:	35	,	genre:	6	}	,
+{	year:	2015	,cap:	1	,	ratio:	70	,	genre:	1	}
+]
+
+
+circleRatio.forEach(function(albumvalue){
+
+	svg.append("circle").attr("r", 1).attr("opacity", .7);
+
+});
+
+
+var circles = d3.selectAll("circle");
+circles.data(circleRatio);
+
+var onemil = .4;
+var radius = 57;
+var start = 20;
+
+circles.attr("cy", function(albumvalue){
+	return yScale(albumvalue.year); 		//graphics for visualizing data
+}).attr("r", function(albumvalue){
+	return onemil*albumvalue.ratio;
+}).attr("cx", function(albumvalue){
+	if (albumvalue.year%2 == 0){
+	 	return radius*albumvalue.cap+padding-start;
+	 }else{
+	 	return radius*albumvalue.cap+padding+start/2;
+	 }
+}).attr("fill", function(albumvalue){
+
+	if (albumvalue.genre == 0){
+		return "#C0392B";
+	}else if (albumvalue.genre == 1){
+		return "#3498DB";
+	}else if (albumvalue.genre == 2){
+		return "#1ABC9C";
+	}else if(albumvalue.genre == 3){	//other
+		return "#F1C40F";
+	}else if(albumvalue.genre == 4){
+		return "#34495E";
+	}else if(albumvalue.genre == 5){	//R&B
+		return "#8E44AD";
+	}else if(albumvalue.genre == 6){	//soundtrack
+		return "#E67E22";
+	}
+});
+
+svg.append("text").text("2")
+.attr("x", 340.5)
+.attr("y", 541)
+.style("fill", "#fff")
+.style("font-size", "17px");
+
+svg.append("text").text("9.9M")
+.attr("x", 519)
+.attr("y", 303)
+.style("fill", "#FFFFFF")
+.style("font-size", "23px");
+
+
+var legendHash = {	0: ["rock", "#C0392B"],					//color in rainbow order
+					1:	["soundtrack", "#E67E22"],
+					2:	["other", "#F1C40F"],
+					3:	["country", "#1ABC9C"],
+					4:	["pop", "#3498DB"],
+					5:	["hip hop", "#34495E"],
+					6:	["R&B", "#8E44AD"],
+					7: 	["M=million", "#C03987"]
+
+}
+
+var legend = svg.append("g")
+.attr("class", "legend")
+.attr("x", width-200)
+.attr("y", 100)
+.attr("height", 200)
+.attr("width", 200);
+
+legend.selectAll('g').data(circleRatio)
+  .enter()
+  .append('g')
+  .each(function(d, i) {
+    var g = d3.select(this);
+
+    g.append("text")
+      .attr("x", width - 130)
+      .attr("y", i * 25 + 150)
+      .attr("height",30)
+      .attr("width",80)
+      .style("fill", legendHash[String(i)][1])
+      .text(legendHash[String(i)][0]);
+
+ });
+
+
+</script>
+
+</div>
+
+<p style="font-size:14pt; white-space: pre;">
+Radius of circles represent sales (smallest circle is 2 million) during the year on the y-axis.
+NSync has the highest number of album sales (2.4 million the first week and 9.9 million only in 2000),
+and set the record for fastest selling album only surpassed by Adele's 25 15 years later. The bottom
+3 biggest blue circles from 2011-2015 are all Adele's (both top selling albums of 2011 and 2012 are
+21 and the only album that sold over 2 million in 2015 was 25).</p>
+
+
+
+
+</html>
