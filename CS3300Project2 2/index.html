@@ -1,0 +1,1087 @@
+<html>
+<head>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="http://d3js.org/topojson.v1.min.js" charset="utf-8"></script>
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Dosis' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Ubuntu' rel='stylesheet' type='text/css'>
+
+<!-- https://flatuicolors.com/ style source-->
+
+<style>
+body { 
+	font-family: 'Montserrat', sans-serif;
+	text-align: center;
+	margin: 0 auto 0 auto;
+}
+div {
+  text-align: center;
+  margin: 0 auto 0 auto;
+}
+svg {
+	background-color: none; 
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000000;
+    stroke-width:2;
+}
+
+#svgwrapper{
+	width: 1400 px;
+	overflow: auto;
+}
+
+h1{
+	margin-top: 20px;
+}
+.mapinfo {
+	font-family: 'Ubuntu', sans-serif;
+	font-size: 13px;
+	float: right;
+	margin: 200 0 0 0;
+}
+
+.disp {
+	font-family: 'Ubuntu', sans-serif;
+	font-size: 15px;
+	float: left;
+}
+
+.svgfloat {
+	float: left;
+}
+
+.viewbutton {
+    background-color: white;
+    border: 1px solid black;
+    color: #7f8c8d;
+    padding: 5px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 15px;
+    cursor: pointer;
+    float: none;
+    font-family: 'Montserrat', sans-serif;
+    margin-left: -5.4px;
+    border: 2px solid;
+}
+
+.filterbutton {
+    background-color: white;
+    border: 1px solid black;
+    color: #7f8c8d;
+    padding: 5px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 15px;
+    cursor: pointer;
+    float: none;
+    font-family: 'Montserrat', sans-serif;
+    margin-left: -5.4px;
+    border: 2px solid;
+}
+
+
+.button1 {
+	background-color: #34495e; 		
+    color: white; 
+    border-top-left-radius:1em;
+	border-bottom-left-radius:1em;
+   
+}
+.button2 {
+	background-color: white;	/*//selecte*/
+	color: #7f8c8d;								/*asbestos*/
+	border-top-right-radius:1em;
+	border-bottom-right-radius:1em;
+}
+#yearslider{
+	width:500px;
+}
+</style>
+</head>
+
+<body>
+<h1> Mortality Rate and Top 10 Causes </h1>
+
+<p> Select year </p>
+<svg id="yearlist"></svg><br>
+<input type="range" min="0" max="4" value="0" step="1" onchange="displayyearsgroup(this.value)" id="yearslider" />
+
+<br>
+
+<p>Select compare view mode</p>	
+
+<input type="button" id="b0" class="viewbutton button1" value="Default" status="ON"
+       onclick="changeview(this,1);">
+<input type="button" id="b1" class="viewbutton" value="Gender"  status="OFF"
+       onclick="changeview(this,1);">
+<input type="button" id="b3" class="viewbutton button2" value="Ethnicity" status="OFF"
+       onclick="changeview(this,1);">
+
+<br>
+<br>
+<p> Select population </p>
+<input type="button" id="g0" tag="0" class="filterbutton button1" value="All" status="ON"
+       onclick="changeview(this,2);">
+<input type="button" id="g1" tag="1" class="filterbutton" value="Male"  status="OFF"
+       onclick="changeview(this,2);">
+<input type="button" id="g2" tag="2" class="filterbutton button2" value="Female" status="OFF"
+       onclick="changeview(this,2);">
+
+<br>
+<br>
+<input type="button" id="r0" tag="0" class="filterbutton button1" value="All" status="ON"
+       onclick="changeview(this,3);">
+<input type="button" id="r1" tag="1" class="filterbutton" value="White"  status="OFF"
+       onclick="changeview(this,3);">
+<input type="button" id="r2" tag="2" class="filterbutton" value="Black"  status="OFF"
+       onclick="changeview(this,3);">
+<input type="button" id="r3" tag="3" class="filterbutton button2" value="Other" status="OFF"
+       onclick="changeview(this,3);">
+<br>
+<br>
+
+<div class="disp">
+<h2> Click the Bubble! </h2>
+<span id="display"></span>
+</div>
+
+<div class="mapinfo">
+<h2> Mouseover to see age-adjusted rate</h2>
+<span id="map"></span>
+</div>
+
+<div id="cidtext"></div>
+
+<script src='data1998.json'></script>
+<script src='data2000.json'></script>
+<script src='data2006.json'></script>
+<script src='data2010.json'></script>
+<script src='data2013.json'></script>
+<script>
+
+//---start of bubble visulization----//
+var height = 800;
+var width = 800;
+var textwidth=300;
+var textheight=40;
+// change
+var sliderwidth=500;
+// var refcolor=["#89bb82","#2b83ba","#fff699" ,"#faa300","#c7191c"];
+var refcolor =["#2980b9", "#f39c12", "#16a085", "#d35400", "#8e44ad"];
+var mainsvg = d3.select("#display").append("svg").attr("width",width).attr("height",height);
+var gender =["None","M","F"];
+var ethnicity =["None","White","Black","Other"];
+var years=["1998","2000","2006","2010","2013"]
+var genderselect=0, ethselect=0,yearselect=0;
+var level=0;
+var deathmax=2403351;
+
+
+
+var l1category=
+[{name:"Heart disease",list:[]},
+{name:"Cancer",list:["Breast Cancer","Lung Cancer","Lukemia","Other"]},
+{name:"Respiratory",list:["Bronchitis","Emphysema","Asthma","Other"]},//Chronic lower respiratory diseases
+{name:"Stroke",list:[]},
+{name:"Accidents",list:["Transport Accident","Other"]},
+{name:"Alzheimer's",list:[]},
+{name:"Diabetes",list:[]},
+{name:"Nephrotic",list:[]},
+{name:"Flu",list:["Influenza","Pneumonia"]},
+{name:"Suicide",list:["By firearm","Other"]}];//need to FIX this, 1998 data anomoly
+
+var viewmode=0;
+var jsonobjects=[data1998,data2000,data2006,data2010,data2013];
+displaysliderlist("#ethnicitylist",ethnicity);
+displaysliderlist("#yearlist",years);
+displaysliderlist("#genderlist",gender);
+
+var svgmap; 
+
+function displaysliderlist(label,arr){
+	var offset = 12; 
+	var svg=d3.select(label).attr("width",sliderwidth+offset).attr("height",textheight)
+	
+	for(var i=0;i<arr.length;i++){
+		var w=(sliderwidth+offset)/arr.length;
+	var listitem=svg.append("rect")
+	.attr("stroke-width",0)
+	.attr("x", w*i)
+	.attr("y", 0)
+	.attr("height", textheight)
+	.attr("width", w)
+	.attr("fill","white")
+	.attr()
+	var txtitem=svg.append("text").attr("x", w*i+15*i).attr("y", textheight/2+5).text(arr[i]).attr("color","black");
+	}
+}
+
+
+var ethnicitylabel=d3.select("#ethnicitydisplay").append("svg").attr("width",textwidth).attr("height",textheight).append("text").attr("x", 20).attr("y", textheight/2).text("Selected:" +ethnicity[0]);
+var yearlabel=d3.select("#yeardisplay").append("svg").attr("width",textwidth).attr("height",textheight).append("text").attr("x", 20).attr("y", textheight/2).text("Selected:" +years[0]);
+var genderlabel=d3.select("#genderdisplay").append("svg").attr("width",textwidth).attr("height",textheight).append("text").attr("x", 20).attr("y", textheight/2).text("Selected:" +gender[0]);
+
+
+//update display when user inputs filter value
+function displayethgroup(index){
+	ethselect=index;
+	updatebubbledisplay()
+}
+function displayyearsgroup(index){
+	yearselect=index;
+	svgmap.remove();
+	handlemap(-1);
+	updatebubbledisplay()
+}
+function displaygendergroup(index){
+	genderselect=index;
+	updatebubbledisplay()
+}
+
+function updatebubbledisplay(){
+	if(level==0){
+		displaybubbles();
+	}
+	else{
+		level=1;
+		displaybubbles(0);
+		for(var i=0;i<l1category.length;i++){
+			displaybubbles(1,i);
+		}
+	}
+}
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+//gender+ethnicity+age
+function wrapper(v){
+			return Math.sqrt(v);
+		}
+function unwrap(v){
+			return Math.round(v*v);
+		}
+function compute(l1category,l2category){
+
+	if(true){
+		var source=jsonobjects[yearselect];
+		
+		var obj=source.filter(function(c){
+			return c.Index1==l1category&&c.index2==l2category});
+		if(obj.length!=1){
+			//must throw error
+		}
+		dataobject=obj[0];
+		
+		if(genderselect==0){
+			if(ethselect==0){
+				if(isNumber(dataobject.AllAll)){
+					return wrapper(parseInt(dataobject.AllAll));
+				}
+				return wrapper(parseInt(dataobject.AllAll.replace(/,/g, '')));
+			}
+			if(ethselect==1){
+				if(isNumber(dataobject.WhiteAll)){
+					return wrapper(parseInt(dataobject.WhiteM));
+				}
+				return wrapper(parseInt(dataobject.WhiteAll.replace(/,/g, '')));
+			}
+			if(ethselect==2){
+				if(isNumber(dataobject.BlackAll)){
+					return wrapper(parseInt(dataobject.BlackM));
+				}
+				return wrapper(parseInt(dataobject.BlackAll.replace(/,/g, '')));
+			}
+			if(ethselect==3){
+				if(isNumber(dataobject.OtherAll)){
+					return wrapper(parseInt(dataobject.OtherM));
+				}
+				return wrapper(parseInt(dataobject.OtherAll.replace(/,/g, '')));
+			}
+		}
+		else if(genderselect==1){
+			if(ethselect==0){
+				if(isNumber(dataobject.AllM)){
+					return wrapper(parseInt(dataobject.AllM));
+				}
+				
+				return wrapper(parseInt(dataobject.AllM.replace(/,/g, '')));
+			}
+			if(ethselect==1){
+				if(isNumber(dataobject.WhiteM)){
+					return wrapper(parseInt(dataobject.WhiteM));
+					
+				}
+				return wrapper(parseInt(dataobject.WhiteM.replace(/,/g, '')));
+			}
+			if(ethselect==2){
+				if(isNumber(dataobject.BlackM)){
+					return wrapper(parseInt(dataobject.BlackM));
+					
+				}
+				return wrapper(parseInt(dataobject.BlackM.replace(/,/g, '')));
+			}
+			if(ethselect==3){
+				if(isNumber(dataobject.OtherM)){
+					return wrapper(parseInt(dataobject.OtherM));
+					
+				}
+				return wrapper(parseInt(dataobject.OtherM.replace(/,/g, '')));
+			}
+		}
+		else if(genderselect==2){
+			if(ethselect==0){
+				//console.log("Allall"+dataobject.AllAll);
+				if(isNumber(dataobject.AllF)){
+					return wrapper(parseInt(dataobject.AllF));
+					
+				}
+				return wrapper(parseInt(dataobject.AllF.replace(/,/g, '')));
+			}
+			if(ethselect==1){
+				if(isNumber(dataobject.WhiteF)){
+					return wrapper(parseInt(dataobject.WhiteF));
+					
+				}
+				return wrapper(parseInt(dataobject.WhiteF.replace(/,/g, '')));
+			}
+			if(ethselect==2){
+				if(isNumber(dataobject.BlackF)){
+					return wrapper(parseInt(dataobject.BlackF));
+					
+				}
+				return wrapper(parseInt(dataobject.BlackF.replace(/,/g, '')));
+			}
+			if(ethselect==3){
+				if(isNumber(dataobject.OtherF)){
+					return wrapper(parseInt(dataobject.OtherF));
+					
+				}
+				return wrapper(parseInt(dataobject.OtherF.replace(/,/g, '')));
+			}
+		}
+	}
+	else{
+		return Math.random() * (30) + 10;
+	}
+}
+
+//viewmode 0=all, 1=gender, 2=age, 3=ethnicity
+function compute2(l1category,l2category,viewmode){
+	var arr=[];
+	var sum=0;
+	var source=jsonobjects[yearselect];
+		//console.log(source.length)
+		var obj=source.filter(function(c){
+			return c.Index1==l1category&&c.index2==l2category});
+		if(obj.length!=1){
+			//console.log("error");
+		}
+		dataobject=obj[0];
+	if(viewmode==1){
+		
+		var M; 
+		if(isNumber(dataobject.AllM)){
+					M= parseInt(dataobject.AllM);
+					
+		}
+		else{ M=parseInt(dataobject.AllM.replace(/,/g, ''))};
+		var F;
+		if(isNumber(dataobject.AllF)){
+					F= parseInt(dataobject.AllF);
+					
+		}
+		else{ F=parseInt(dataobject.AllF.replace(/,/g, ''))};
+		arr.push(M);
+		arr.push(F);
+		sum=M+F;
+	}
+	else if(viewmode==2){
+		for(var i=0;i<agegroups.length-1;i++){
+			var r=Math.random() * (30) + 10;
+			arr.push(r);
+			sum+=r;
+		}
+		
+	}
+	else if(viewmode==3){
+		var B; 
+		if(isNumber(dataobject.BlackAll)){
+					B= parseInt(dataobject.BlackAll);
+					
+		}
+		else{ B=parseInt(dataobject.BlackAll.replace(/,/g, ''))};
+		var W;
+		if(isNumber(dataobject.WhiteAll)){
+					W= parseInt(dataobject.WhiteAll);
+					
+		}
+		else{ W=parseInt(dataobject.WhiteAll.replace(/,/g, ''))};
+		var O;
+		if(isNumber(dataobject.OtherAll)){
+					O= parseInt(dataobject.OtherAll);
+					
+		}
+		else{ O=parseInt(dataobject.OtherAll.replace(/,/g, ''))};
+		arr.push(W);
+		arr.push(B);
+		arr.push(O);
+		sum=W+B+O;
+	}
+	return arr.map(function(x) { return x /sum; });
+}
+
+
+function displaybubbles(from,tag){
+	var l1distfromorigin=220;
+	var l2distfromorigin=150;
+	
+	if(level==0){
+		var value=compute(-1,-1);
+		var r=150*value/wrapper(deathmax);
+		d3.selectAll("#l0circle").remove();
+		d3.selectAll(".pie0").remove();
+		d3.selectAll("#l0text").remove();
+		mainsvg.selectAll(".pie1").remove();
+		mainsvg.selectAll(".l1circle").transition().duration(300).delay(20).attr("r",0);
+		mainsvg.selectAll(".l1circle").remove();
+		mainsvg.selectAll("line").remove();
+		mainsvg.selectAll(".l1text").remove();
+		
+		if(viewmode&&viewmode>0){
+				var valuearr=compute2(-1,-1,viewmode);
+				createpiecircles(valuearr,width/2,height/2,r,0);
+				//console.log("viewmode");
+				r-=8;
+				if(r<0){
+					r=1;
+				}
+			}
+		mainsvg.append("circle").attr("cx", width/2).attr("cy", height/2).attr("r", 5).style("fill", "#999").attr("id","l0circle").attr("clicked","false").style('stroke', '#777')
+  .style('stroke-width', '5').on("click", function(){
+  		if(d3.select(this).attr("clicked")=="false"){
+			level=1;
+			displaybubbles(3,-1);
+			displaybubbles(0,-1);
+			d3.select(this).attr("clicked","true")
+
+		}
+		else{
+			level=1;
+			displaybubbles(3,-1);
+			level=0;
+			displaybubbles();
+			d3.select(this).attr("clicked","false")
+			svgmap.remove();
+			handlemap(-1);
+		}
+	});
+
+  	d3.select("#l0circle").transition().duration(300).delay(20).attr("r",r-5)
+		mainsvg.append("text").attr("id","l0text").attr("x", width/2-30).attr("y", height/2).text(unwrap(value));//number1
+	}
+	if(level==1&&from==0){
+		//going from big circle to smaller circles
+		//*** r should be set to be remainder
+		
+		var remainder=compute(-2,-2);
+		var value=compute(-1,-1);
+		var r=150*remainder/wrapper(deathmax);
+		d3.select("#l0circle").transition().duration(300).delay(20).attr("r",r);
+		d3.select("#l0text").transition().duration(300).delay(20).text(unwrap(value));//number2
+		d3.selectAll(".pie0").transition().duration(300).delay(20).attr("opacity",0);
+		d3.selectAll(".pie0").remove();
+		//d3.selectAll(".pie0").transition().duration(0).delay(300).remove();
+		var l1sum=0;
+		for(var i=0;i<l1category.length;i++){
+			var value=compute(i,-1);
+			l1sum+=value;
+		}
+			//console.log("l1sum"+l1sum);
+		mainsvg.selectAll(".pie1").remove();
+		mainsvg.selectAll(".l1circle").remove();
+		mainsvg.selectAll("line").remove();
+		mainsvg.selectAll(".l1text").remove();
+		for(var i=0;i<l1category.length;i++){
+			var value=compute(i,-1);
+			var orir=300*value/l1sum;
+			var r=300*value/l1sum;
+			var angle=360/l1category.length*i;
+			//incoporate view mode
+			//d3.selectAll(".pie1").remove();
+			if(viewmode&&viewmode>0){
+				var valuearr=compute2(i,-1,viewmode);
+				//mainsvg.append("circle").attr("cx", 0).attr("cy", l1distfromorigin).attr("r", r+20).style("fill", "#ddd").attr("transform", "translate("+(width/2)+","+(height/2)+") rotate("+angle+")");
+				createpiecircles(valuearr,(l1distfromorigin*Math.sin(-angle/180*Math.PI)+(width/2)),(l1distfromorigin*Math.cos(angle/180*Math.PI)+(height/2)),r,1);
+				//console.log("viewmode");
+				r-=8;
+				if(r<0){
+					r=1;
+				}
+			}
+			//non-view mode related
+			
+			var l1circlestrokecolor="#def";
+			var l2category=l1category[i].list;
+			var strokewidth=6;
+			if(yearselect==0&&i==9){
+				l2category=[];
+			}
+			if(l2category.length==0){
+				l1circlestrokecolor="#789";
+				var strokewidth=3;
+			}
+			var circle=mainsvg.append("circle").attr("cx", 0).attr("cy", l1distfromorigin).attr("r", 5).style("fill", "#abc").attr("class","l1circle").attr("tag",i).attr("selected","false").attr("id","l1circle"+i).attr("transform", "translate("+(width/2)+","+(height/2)+") rotate("+angle+")").style('stroke', l1circlestrokecolor)
+  .style('stroke-width', strokewidth)
+			
+			
+			
+			circle.transition().duration(300).delay(0).attr("r",r).attr("opacity",1);
+			var textxoffset=-50;
+			var textyoffset=10;
+			mainsvg.append("text").attr("x", 0).attr("y", 0).attr("transform", "translate("+(l1distfromorigin*Math.sin(-angle/180*Math.PI)+(width/2)+textxoffset)+","+(l1distfromorigin*Math.cos(angle/180*Math.PI)+(height/2)+textyoffset)+") rotate("+0+")").attr("class","l1text").text(l1category[i].name);
+			var numberyoffset=30;
+			mainsvg.append("text").attr("x", 0).attr("y", 0).attr("transform", "translate("+(l1distfromorigin*Math.sin(-angle/180*Math.PI)+(width/2)+textxoffset)+","+(l1distfromorigin*Math.cos(angle/180*Math.PI)+(height/2)+textyoffset+numberyoffset)+") rotate("+0+")").attr("class","l1text").text(unwrap(value));
+			//invisible circle for clicking
+			if(orir<30){
+				orir=orir+5;
+			}
+			var invisiblecircle=mainsvg.append("circle").attr("cx", 0).attr("cy", l1distfromorigin).attr("r", orir).style("fill", "#ddd").attr("opacity",0).attr("class","l1circle").attr("tag",i).attr("selected","false").attr("id","l1circle"+i).attr("transform", "translate("+(width/2)+","+(height/2)+") rotate("+angle+")").on("click", function(){
+			if(d3.select(this).attr("selected")=="false"){
+				level=2;
+				d3.select(this).attr("selected","true");
+				
+			}
+			else{
+				level=1;
+				d3.select(this).attr("selected","false");
+				
+			}
+
+			//console.log(d3.select(this).attr("tag"));
+			svgmap.remove();
+			displaybubbles(1,d3.select(this).attr("tag"));
+			handlemap(d3.select(this).attr("tag"));
+			
+			});
+			
+		}
+	}
+	//shrink the level 2 bubble with tag, recursive call
+	if(level==1&&from==1){
+
+		d3.selectAll("."+"l2circle"+tag).transition().duration(300).delay(0).attr("r", 0);
+		d3.selectAll("."+"l2circle"+tag).transition().delay(250).remove();
+		d3.selectAll(".l2line"+tag).transition().duration(100).delay(0).remove();
+		//console.log(d3.selectAll(".l2line")[0]);
+	}
+	//shrink all level2 bubbles, call from changeview
+	if(level==1&&from==3){
+		
+		for(var i=0;i<l1category.length;i++){
+			var tag=i;
+			
+			d3.selectAll("."+"l2circle"+tag).transition().duration(300).delay(0).attr("r", 0);
+			d3.selectAll("."+"l2circle"+tag).transition().delay(250).remove();
+		}
+	}
+	if(level==2){
+		//console.log("level 2");
+		var l2category=l1category[tag].list;
+		if(yearselect==0&&tag==9){
+			l2category=[];
+		}
+		if(l2category.length>0){
+			//console.log("ok");
+			var l2sum=0;
+			for(var i=0;i<l2category.length;i++){
+				var value=compute(i,-1);
+				l2sum+=value;
+			}	
+			for(var i=0;i<l2category.length;i++){
+				var value=compute(tag,i);
+				var r=80*value/l2sum;
+				var angle1=360/l1category.length*tag;
+				var angle2=angle1-15+70/l2category.length*i//360/l2category.length*i;
+				var tx=l1distfromorigin*Math.sin(-angle1/180*Math.PI)+(width/2);
+				var ty= l1distfromorigin*Math.cos(angle1/180*Math.PI)+(height/2);
+				var cx=l2distfromorigin*Math.sin(-angle2/180*Math.PI)+tx;
+				var cy= l2distfromorigin*Math.cos(angle2/180*Math.PI)+ty;
+				var line = mainsvg.append("line").attr("class","l2line"+tag).attr("tag",tag).attr("id","l2line"+tag+"i"+i).attr("x1",cx).attr("y1",cy).attr("x2",tx).attr("y2",ty).style("stroke", "#aaa");;
+				var circle=mainsvg.append("circle").attr("cx", 0).attr("cy", l2distfromorigin).attr("r", 5).style("fill", "#55c").attr("class","l2circle"+tag).attr("tag",i).attr("id","l2circle"+tag+"i"+i).attr("transform", "translate("+(tx)+","+(ty)+") rotate("+angle2+")")
+
+
+				circle.on('mouseover', function(d){
+					//console.log("mousin")
+					var coordinates = d3.mouse(this);
+					var xpos = coordinates[0];
+					var	ypos = coordinates[1];
+
+					var group= d3.select(this)
+							
+					var boxWidth=150;
+					var boxHeight=70;
+					var l1cat=tag;
+					var l2cat=d3.select(this).attr("tag");
+					//console.log(angle);
+					var boxx=tx//+radius2*Math.sin(angle/180*Math.PI)
+					var boxy=ty//+radius2*Math.cos(angle/180*Math.PI)
+						mainsvg.append("rect").attr("x", boxx)
+						.attr("y", boxy).attr("width", boxWidth).attr("height", boxHeight).attr("fill","#ddd").attr("opacity",0.8).attr("class", "l2hovertext");
+
+						mainsvg.append("text")
+							.attr("x", boxx+20)
+						.attr("y", boxy+30)
+							.attr("class", "l2hovertext")
+							.text(l1category[l1cat].list[l2cat]);
+							//console.log(l1category[l1cat].list[l2cat]);
+
+						mainsvg.append("text")
+							.attr("x", boxx+20)
+						.attr("y", boxy+45)
+							.attr("class", "l2hovertext")
+							.text("Death: "+unwrap(compute(l1cat,l2cat)));
+							//console.log(unwrap(compute(l1cat,l2cat)));
+				})
+				 .on("mouseout",function(){
+				 	d3.selectAll(".l2hovertext").remove();
+			     	//console.log("mousout")
+			   })
+
+				circle.transition().duration(300).delay(0).attr("r",r).attr("opacity",0.9);
+			}
+		}
+		else{
+			level=1;
+		}
+	}
+}
+
+displaybubbles()
+handlemap(-1)
+
+function createpiecircles(arr,offx,offy,radius,level){
+	var rotation=0;
+	
+	for(var i=0;i<arr.length;i++){
+		var radius2=radius+15+5*(1-arr[i]);
+		var angle=arr[i]*360
+		var x=radius*Math.cos(angle/180*Math.PI)
+		var x2=radius2*Math.cos(angle/180*Math.PI)
+		var flag=0
+		if(angle>180){
+			flag=1
+		}
+
+
+var y=radius*Math.sin(angle/180*Math.PI)
+var y2=radius2*Math.sin(angle/180*Math.PI)
+var dataStringhead = "M 0,0 L"+radius+",0  A"+radius+","+radius+" 0,"+flag+",1"+x+","+y+"z";
+mainsvg.append("path").attr("d",dataStringhead) .attr("stroke", "none").attr("stroke-width", 2).attr("class","pie"+level).attr("fill", "none").attr("transform", "translate("+(offx)+","+(offy)+") rotate("+rotation+")").attr("fill",refcolor[i%5]).attr("opacity",1);
+
+//invisible for clikcing 
+	
+	var dataStringhead2 = "M 0,0 L"+radius2+",0  A"+radius2+","+radius2+" 0,"+flag+",1"+x2+","+y2+"z";
+
+	mainsvg.append("path").attr("d",dataStringhead2) .attr("stroke", "none").attr("stroke-width", 2).attr("class","pie"+level).attr("fill", "none").attr("transform", "translate("+(offx)+","+(offy)+") rotate("+rotation+")").attr("fill",refcolor[i%5]).attr("opacity",0.6).attr("i",i).on('mouseover', function(d){
+		//console.log("I'm invisible pie")
+		var coordinates = d3.mouse(this);
+		var xpos = coordinates[0];
+		var	ypos = coordinates[1];
+
+		var group= d3.select(this)
+				
+		var boxWidth=150;
+		var boxHeight=50;
+		var index=d3.select(this).attr("i");
+
+		var boxx=offx+radius2+5//+radius2*Math.sin(angle/180*Math.PI)
+		var boxy=offy//+radius2*Math.cos(angle/180*Math.PI)
+			mainsvg.append("rect").attr("x", boxx)
+			.attr("y", boxy).attr("width", boxWidth/2).attr("height", boxHeight).attr("fill",refcolor[index%5]).attr("opacity",0.8).attr("class", "pietext");
+
+			mainsvg.append("text")
+				.attr("x", boxx+20)
+			.attr("y", boxy+30)
+				.attr("class", "pietext")
+				.text(Math.round(arr[index]*100)+"%");
+	})
+	 .on("mouseout",function(){
+	 	d3.selectAll(".pietext").remove();
+ 
+   })
+
+		rotation+=angle;
+	}
+}
+function changeview(button, ind){
+	
+	var reset=false;
+	if (ind == 1){
+		d3.select("#b0").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#b1").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#b3").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		if (d3.select(button).attr("value") != "Default"){
+			ethselect=0;
+			genderselect=0;
+			d3.selectAll(".filterbutton").attr("type","hidden");
+			reset=true;
+		}
+		else{
+			d3.selectAll(".filterbutton").attr("type","button");
+		}
+		
+	}
+	if (ind ==2||reset){
+		d3.select("#g0").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#g1").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#g2").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		if(!reset){
+		displaygendergroup(parseInt(d3.select(button).attr("tag")));
+		}
+	}
+	if (ind==3||reset){
+		d3.select("#r0").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#r1").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#r2").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		d3.select("#r3").style("color","#7f8c8d").style("background-color","white").attr("status","OFF");
+		if(!reset){
+		displayethgroup(parseInt(d3.select(button).attr("tag")));
+		}
+	}
+	if(reset){
+		d3.select("#r0").style("color","white").style("background-color", "#34495e").attr("status","ON");
+		d3.select("#g0").style("color","white").style("background-color", "#34495e").attr("status","ON");
+	}
+	oristatus=d3.select(button).attr("status");
+	d3.select(button).style("color","white").style("background-color", "#34495e").attr("status","ON");
+	
+	var bid=d3.select(button).attr("id");
+	if(oristatus=="OFF"){
+		if(level>=1){
+				level=1;
+		}
+		if(bid=="b0"){
+			
+			viewmode=0;
+			displaybubbles(3);
+			displaybubbles(0);
+			hidelegend();
+
+		}
+		else if(bid=="b1"){
+			displaybubbles(3);
+			viewmode=1;
+			displaybubbles(0,-1);
+			hidelegend();
+			displaylegend(1);
+		}
+		// else if(bid=="b2"){
+		// 	displaybubbles(3);
+		// 	viewmode=2;
+		// 	displaybubbles(0,-1);
+		// }
+		else if(bid=="b3"){
+			displaybubbles(3);
+			viewmode=3;
+			displaybubbles(0,-1);
+			hidelegend();
+			displaylegend(3);
+		}
+	}
+}
+//tag=1 for gender, tag=3 for ethnicity
+function displaylegend(tag){
+	var legendwidth=80;
+	var legendheight=30;
+	if(tag==1){
+		var i;
+		var offset=0;
+		for(i=1;i<gender.length;i++){
+			mainsvg.append("rect").attr("class","legend").attr("x", width/2-offset)
+			.attr("y", legendheight).attr("width", legendwidth).attr("height", legendheight).attr("fill",refcolor[(i-1)%5]).attr("opacity",1);
+
+			mainsvg.append("text").attr("class","legend").attr("x", width/2-offset+legendwidth/3+10)
+			.attr("y", legendheight*1.7).text(gender[i])
+			//console.log(ethnicity[i]);
+			offset+=legendwidth;
+		}
+	}
+	if(tag==3){
+		var i;
+		var offset=0;
+		for(i=1;i<ethnicity.length;i++){
+			
+			mainsvg.append("rect").attr("class","legend").attr("x", width/2-offset+40)
+			.attr("y", legendheight).attr("width", legendwidth).attr("height", legendheight).attr("fill",refcolor[(i-1)%5]).attr("opacity",1);
+
+			mainsvg.append("text").attr("class","legend").attr("x", width/2-offset+legendwidth/3+35)
+			.attr("y", legendheight*1.7).text(ethnicity[i])
+			//console.log(ethnicity[i]);
+			offset+=legendwidth;
+		}
+
+	}
+
+}
+function hidelegend(){
+	mainsvg.selectAll(".legend").remove();
+
+}
+//---end of bubble visulization----//
+//--start of map visialization, paste your code here---//
+//tag is the index corresponding to disease in the "l1category" variable for example, Heart Disease have tag 1
+
+
+
+function handlemap(tag){
+	
+var width = 570,
+    height = 350;
+
+var projection = d3.geo.albersUsa()
+    .scale(600)
+    .translate([(width-100) / 2, height / 2]);
+
+var path = d3.geo.path().projection(projection);
+
+var opacity; 		//need to be adjusted depending on the rate
+	
+svgmap = d3.select("#map").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var textbox = svgmap.append("text").text("Selected cause: ").attr("x", 20).attr("y", 345); 	//display selected cause for disease
+var textbox2 = svgmap.append("text").text("Max:  ").attr("x", 250).attr("y", 345); 	//display selected cause for disease
+
+var prev;
+var coordinates = [0, 0]; 
+var xpos;
+var ypos; 
+var id; 
+
+var rateSel; 
+
+var boxWidth = 100;
+var offset = 30; 
+
+var rates2013 = {}; 
+var rates2010 = {};
+var rates2006 = {};
+var rates2000 = {};
+var rates1998 = {};
+
+
+
+d3.json("stat2013.json", function(json){
+	json.forEach(function(d,i){
+		rates2013[d.id] = d;
+	});
+});
+d3.json("stat2010.json", function(json){
+	json.forEach(function(d,i){
+		rates2010[d.id] = d;
+	});
+});
+d3.json("stat2006.json", function(json){
+	json.forEach(function(d,i){
+		rates2006[d.id] = d;
+	});
+});
+d3.json("stat2000.json", function(json){
+	json.forEach(function(d,i){
+		rates2000[d.id] = d;
+	});
+});
+d3.json("stat1998.json", function(json){
+	json.forEach(function(d,i){
+		rates1998[d.id] = d;
+	});
+});
+
+var allrates=[rates1998,rates2000,rates2006,rates2010,rates2013];
+var currentrate=allrates[yearselect];
+var cid = tag; 
+
+
+d3.json("us.json", function(shapes){
+	states = topojson.feature(shapes, shapes.objects.states).features;
+
+		if (cid > -1){
+			textbox.text("Selected cause: "+l1category[cid].name);
+			textbox2.text("Max: "+compute(99,cid)); 
+
+		}
+
+
+	var statePaths = svgmap.append("g");
+	statePaths.selectAll("path").data(states).enter()
+	.append("path").attr("d", path)
+	.style("fill", "#c0392b").style("stroke", "#fff")
+	.style("stroke-width", .5)
+	.style("opacity", function(d){
+		if (d.id < 60){		//map doesn't include virgin island and puerto rico
+			// console.log("state name: "+rates[d.id].state+" opacity: "+compOpac(d.id,cid))
+			var value = compOpac(d.id, cid); 
+			return value; 
+		}
+
+
+	})
+
+	.on('mouseover', function(d){
+		coordinates = d3.mouse(this);
+		xpos = coordinates[0];
+		ypos = coordinates[1];
+
+		d3.select(this)
+		.transition()
+		.style("opacity", 1)
+		.style('fill', '#ecec81');
+
+		//console.log(d.id)
+
+	var groups = svgmap.append("g").attr("id","inf2"); 
+
+		groups.append("rect")
+			.attr("opacity",0)
+			.attr("fill", "#fff")
+			.attr("width", boxWidth)
+			.attr("height", boxWidth/2)
+			.attr("id","info");
+
+		groups.append("text")
+			.attr("opacity",0)
+			.attr("id", "txt")
+			.text(rates2013[d.id].state);
+
+		groups.append("text")
+			.attr("opacity",0)
+			.attr("id", "stat")
+			.text(compute(d.id, cid)); 
+
+		showInfo();
+	
+	})
+	.on('mouseout', function(d){
+		d3.select(this)
+		.transition()
+		.style('fill', "#c0392b")
+		.style("opacity", compOpac(d.id, cid)); 
+
+		d3.select("#inf2").remove(); 
+	})
+
+});
+
+
+displaymaplegend();
+
+function displaymaplegend(){
+	var offset=0;
+	var i;
+	var legendwidth=25;
+	var color="#c0392b";
+	var legendheight=10;
+
+		for(i=1;i<=10;i++){
+			
+			svgmap.append("rect").attr("class","legend").attr("x", 10+offset)
+			.attr("y", 10).attr("width", legendwidth).attr("height", legendheight).attr("fill",color).attr("opacity",i/10);
+
+			svgmap.append("text").attr("class","legend").attr("x", 10+offset)
+			.attr("y", 10).text(i/10) 
+
+
+			//console.log(ethnicity[i]);
+			offset+=legendwidth;
+			
+		}
+		svgmap.append("text").attr("class","legend").attr("x", 10+offset)
+			.attr("y", 10).text("Relative to Max Ratio") 
+
+}
+
+function showInfo(){
+
+	d3.select("#info")
+		.transition()
+		.attr("opacity", .95)
+		.attr("stroke", "#ccc")
+		.attr("x", xpos+offset)
+		.attr("y", ypos-offset);
+
+	d3.select("#txt")
+		.transition()
+		.attr("x", xpos+offset*1.1)
+		.attr("y", ypos-offset/3)
+		.attr("opacity",1);
+
+	d3.select("#stat")
+		.transition()
+		.attr("x", xpos+offset*5/8+boxWidth/2)
+		.attr("y", ypos+offset/3)
+		.attr("opacity",1);
+}
+
+function compOpac(sid, cid){
+
+	//state id
+	//cid = cause id. must be read from user input
+		return (compute(sid,cid)/ compute(99,cid))*0.9+0.1;
+	
+}
+
+function compute(sid, cid){		//v is id of the state
+	// compute the rate of death in each state and set color 
+	// cid is cause id
+
+	if (cid == -1){
+		rateSel =  currentrate[sid].overall;
+	}
+	else if(cid ==0){
+		rateSel =  currentrate[sid].heart;
+	}
+	else if(cid ==1){
+		rateSel =  currentrate[sid].neoplasm;
+	}
+	else if(cid ==2){
+		rateSel =  currentrate[sid].resp;
+	}
+	else if(cid ==3){
+		rateSel =  currentrate[sid].cereto;
+	}
+	else if(cid ==4){
+		rateSel = currentrate[sid].accident;
+	}
+	else if(cid ==5){
+		rateSel =  currentrate[sid].alz;
+	}
+	else if(cid ==6){
+		rateSel =  currentrate[sid].diabetes;
+	}
+	else if(cid ==7){
+		rateSel =  currentrate[sid].nephritis;
+	}
+	else if(cid ==8){
+		rateSel =  currentrate[sid].influenza;
+	}else{
+		rateSel =  currentrate[sid].suicide; 
+	}
+	return rateSel; 
+}
+
+
+}
+</script>
+</div>
+</body>
+</html>
